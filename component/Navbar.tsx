@@ -206,7 +206,7 @@ export default function Navbar() {
                 <>
                   <Link 
                     className="flex items-center justify-center border-2 border-[#0D530E] text-[#0D530E] hover:bg-[#0D530E] hover:text-white transition-all px-5 py-3 font-semibold rounded-xl" 
-                    href="/login"
+                    href="/register"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Sign In
