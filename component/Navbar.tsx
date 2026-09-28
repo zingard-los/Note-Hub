@@ -119,7 +119,7 @@ export default function Navbar() {
                 <>
                   <Link 
                     className="text-white hover:text-blue-600 font-bold border py-1 px-4 rounded-xl transition-colors px-4 py-2" 
-                    href="/login"
+                    href="/register"
                   >
                     Sign In
                   </Link>
