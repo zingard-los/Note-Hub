@@ -357,7 +357,7 @@ export default function Register() {
                 </label>
                 {!isSignUp && (
                   <Link
-                    href="#"
+                    href="/forgotpassword"
                     className="text-xs font-bold text-[#0D530E] hover:underline"
                   >
                     Forgot password?
