@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FcGoogle } from "react-icons/fc";
 import {
   FiMail,
   FiLock,
@@ -70,7 +69,6 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form first
     if (!validateForm()) {
       return;
     }
@@ -98,10 +96,8 @@ export default function Register() {
         }
 
         if (data.user) {
-          // Sign up successful
           setError(null);
           alert("Account created! Please check your email to confirm.");
-          // Optionally redirect or reset form
         }
       } else {
         // SIGN IN
@@ -117,7 +113,6 @@ export default function Register() {
         }
 
         if (data.user) {
-          // Sign in successful - redirect to dashboard
           router.push("/dashboard");
         }
       }
@@ -126,7 +121,7 @@ export default function Register() {
         err instanceof Error ? err.message : "Unknown error occurred";
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      setLoading(false);  
     }
   };
 
@@ -231,7 +226,7 @@ export default function Register() {
             </Link>
           </div>
 
-          <div className="text-center sm:text-left mb-6">
+          <div className="text-center sm:text-left mb-8">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               {isSignUp ? "Create your account" : "Welcome back"}
             </h2>
@@ -240,26 +235,6 @@ export default function Register() {
                 ? "Start capturing and organizing your notes in seconds."
                 : "Enter your credentials to access your workspace."}
             </p>
-          </div>
-
-          {/* Social Sign-In */}
-          <button
-            type="button"
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-xl border border-gray-300 shadow-xs transition-colors duration-200"
-          >
-            <FcGoogle size={22} />
-            <span>
-              {isSignUp ? "Sign up with Google" : "Sign in with Google"}
-            </span>
-          </button>
-
-          <div className="relative my-6 text-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <span className="relative z-10 bg-white px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Or continue with email
-            </span>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
