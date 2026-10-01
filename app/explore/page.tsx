@@ -21,7 +21,8 @@ import {
   FiAlertCircle,
   FiTrash2,
   FiAlertTriangle,
-  FiLoader
+  FiLoader,
+  FiHeart
 } from 'react-icons/fi'
 
 interface PublicNote {
@@ -30,6 +31,8 @@ interface PublicNote {
   content: string
   created_at: string
   user_id: string
+  likes_count: number
+  user_has_liked: boolean
 }
 
 export default function ExplorePage() {
@@ -48,6 +51,7 @@ export default function ExplorePage() {
   const [noteToDelete, setNoteToDelete] = useState<PublicNote | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [likeLoadingIds, setLikeLoadingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     checkAuthAndFetchNotes()
@@ -64,14 +68,14 @@ export default function ExplorePage() {
       }
 
       setCurrentUserId(user.id)
-      await fetchPublicNotes()
+      await fetchPublicNotes(user.id)
     } catch (err) {
       console.error('Error checking auth state:', err)
       router.push('/register')
     }
   }
 
-  const fetchPublicNotes = async () => {
+  const fetchPublicNotes = async (userId = currentUserId) => {
     try {
       setLoading(true)
       setError(null)
@@ -86,7 +90,38 @@ export default function ExplorePage() {
         console.error('Database error:', dbError)
         setError(`Error fetching notes: ${dbError.message}`)
       } else {
-        setNotes(data || [])
+        const publicNotes = data || []
+        const noteIds = publicNotes.map((note) => note.id)
+        const { data: likeRows, error: likesError } = noteIds.length
+          ? await supabase
+              .from('note_likes')
+              .select('note_id, user_id')
+              .in('note_id', noteIds)
+          : { data: [], error: null }
+
+        if (likesError) {
+          throw likesError
+        }
+
+        const likesByNote = new Map<string, { count: number; liked: boolean }>()
+        likeRows?.forEach((like) => {
+          const current = likesByNote.get(like.note_id) || { count: 0, liked: false }
+          likesByNote.set(like.note_id, {
+            count: current.count + 1,
+            liked: current.liked || like.user_id === userId,
+          })
+        })
+
+        setNotes(
+          publicNotes.map((note) => {
+            const likes = likesByNote.get(note.id) || { count: 0, liked: false }
+            return {
+              ...note,
+              likes_count: likes.count,
+              user_has_liked: likes.liked,
+            }
+          }),
+        )
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -95,6 +130,78 @@ export default function ExplorePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleLike = async (noteId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!currentUserId || likeLoadingIds.has(noteId)) return
+
+    const note = notes.find((item) => item.id === noteId)
+    if (!note || note.user_id === currentUserId) return
+
+    const wasLiked = note.user_has_liked
+    const nextLiked = !wasLiked
+
+    setLikeLoadingIds((ids) => new Set(ids).add(noteId))
+    setNotes((items) =>
+      items.map((item) =>
+        item.id === noteId
+          ? {
+              ...item,
+              user_has_liked: nextLiked,
+              likes_count: Math.max(0, item.likes_count + (nextLiked ? 1 : -1)),
+            }
+          : item,
+      ),
+    )
+
+    setReadNote((openNote) =>
+      openNote?.id === noteId
+        ? {
+            ...openNote,
+            user_has_liked: nextLiked,
+            likes_count: Math.max(0, openNote.likes_count + (nextLiked ? 1 : -1)),
+          }
+        : openNote,
+    )
+    const { error: likeError } = nextLiked
+      ? await supabase.from('note_likes').insert({ note_id: noteId, user_id: currentUserId })
+      : await supabase
+          .from('note_likes')
+          .delete()
+          .eq('note_id', noteId)
+          .eq('user_id', currentUserId)
+
+    if (likeError) {
+      setNotes((items) =>
+        items.map((item) =>
+          item.id === noteId
+            ? {
+                ...item,
+                user_has_liked: wasLiked,
+                likes_count: Math.max(0, item.likes_count + (wasLiked ? 1 : -1)),
+              }
+            : item,
+        ),
+      )
+      setReadNote((openNote) =>
+        openNote?.id === noteId
+          ? {
+              ...openNote,
+              user_has_liked: wasLiked,
+              likes_count: Math.max(0, openNote.likes_count + (wasLiked ? 1 : -1)),
+            }
+          : openNote,
+      )
+      setError(`Unable to update like: ${likeError.message}`)
+    }
+
+    setLikeLoadingIds((ids) => {
+      const nextIds = new Set(ids)
+      nextIds.delete(noteId)
+      return nextIds
+    })
   }
 
   const handleDeleteNote = async () => {
@@ -303,7 +410,7 @@ export default function ExplorePage() {
               <span>{error}</span>
             </div>
             <button
-              onClick={fetchPublicNotes}
+              onClick={() => fetchPublicNotes()}
               className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shrink-0 self-end sm:self-auto"
             >
               <FiRefreshCw size={14} />
@@ -406,6 +513,22 @@ export default function ExplorePage() {
                         {formatDate(note.created_at)}
                       </span>
 
+                      {!isOwner && (
+                        <button
+                          onClick={(e) => handleLike(note.id, e)}
+                          disabled={likeLoadingIds.has(note.id)}
+                          title={note.user_has_liked ? 'Unlike note' : 'Like note'}
+                          className={`p-2 rounded-lg transition active:scale-90 disabled:opacity-50 ${note.user_has_liked ? 'text-rose-500 hover:bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                        >
+                          <FiHeart size={14} fill={note.user_has_liked ? 'currentColor' : 'none'} />
+                          <span className="sr-only">{note.user_has_liked ? 'Unlike' : 'Like'}</span>
+                        </button>
+                      )}
+
+                      <span className="text-[10px] font-semibold text-slate-400 min-w-4 text-center">
+                        {note.likes_count}
+                      </span>
+
                       <button
                         onClick={(e) => handleCopyLink(note.id, e)}
                         title="Copy Share Link"
@@ -484,6 +607,17 @@ export default function ExplorePage() {
               </div>
 
               <div className="flex items-center gap-2 sm:gap-2.5">
+                {currentUserId && currentUserId !== readNote.user_id && (
+                  <button
+                    onClick={() => handleLike(readNote.id)}
+                    disabled={likeLoadingIds.has(readNote.id)}
+                    className={`flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 ${readNote.user_has_liked ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700'}`}
+                  >
+                    <FiHeart size={14} fill={readNote.user_has_liked ? 'currentColor' : 'none'} />
+                    <span>{readNote.user_has_liked ? 'Liked' : 'Like'} ({readNote.likes_count})</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleCopyLink(readNote.id)}
                   className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95"
