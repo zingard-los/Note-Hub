@@ -286,8 +286,8 @@ export default function Home() {
               </div>
 
               <div className="mt-6 pt-4 border-t border-gray-100 flex items-center gap-1.5 text-xs font-bold text-[#0D530E]">
-                <span>Explore capability</span>
-                <FiArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                {/* <span>Explore capability</span> */}
+                {/* <FiArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /> */}
               </div>
             </div>
           ))}

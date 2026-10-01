@@ -1,4 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { 
   FiBookOpen, 
   FiBriefcase, 
@@ -14,6 +18,22 @@ import {
 } from "react-icons/fi";
 
 export default function Aim() {
+  const router = useRouter();
+  const [checkingSession, setCheckingSession] = useState(false);
+
+  const handleGetStarted = async () => {
+    setCheckingSession(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      router.push(data.session?.user ? "/create" : "/register");
+    } catch {
+      router.push("/register");
+    } finally {
+      setCheckingSession(false);
+    }
+  };
+
   const audienceAims = [
     {
       title: "For Youngsters & Students",
@@ -103,13 +123,15 @@ export default function Aim() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <Link
-              href={"#"}
+            <button
+              type="button"
+              onClick={handleGetStarted}
+              disabled={checkingSession}
               className="bg-[#FFFFFF] text-[#0D530E] hover:bg-emerald-50 active:scale-[0.98] transition-all duration-200 px-8 py-3.5 text-lg font-bold rounded-xl shadow-xl flex items-center justify-center gap-2 group"
             >
-              Start Writing Digitally
+              {checkingSession ? "Checking..." : "Start Writing Digitally"}
               <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </button>
           </div>
         </div>
       </section>
@@ -236,13 +258,15 @@ export default function Aim() {
           <p className="text-[#FFFFFF]/90 text-base sm:text-lg mb-10 max-w-xl leading-relaxed">
             Join students, teachers, and professionals already building their knowledge hub on NoteHub today.
           </p>
-          <Link
-            href={"#"}
+          <button
+            type="button"
+            onClick={handleGetStarted}
+            disabled={checkingSession}
             className="bg-[#FFFFFF] text-[#0D530E] hover:bg-emerald-50 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 px-9 py-4 text-lg font-bold rounded-xl shadow-xl flex items-center justify-center gap-2 group"
           >
-            Get Started Free
+            {checkingSession ? "Checking..." : "Get Started Free"}
             <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </button>
         </div>
       </section>
 
